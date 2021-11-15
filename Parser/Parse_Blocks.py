@@ -5,6 +5,7 @@ from AST.AST_Nodes import *
 from copy import deepcopy
 from Parser.Parser_Syntax_Error import Parser_Syntax_Error
 from stubs.AST_Statement_Stub import AST_Statement_Stub
+from stubs.AST_Expression_Stub import AST_Expression_Stub
 
 ### ==================================== Private Functions ==================================== ###
 CLOSURE_TYPES = [
@@ -86,7 +87,7 @@ def Parse_Blocks(tokens: List[Token]) -> AST_Node:
 ### ==================================== Public Functions ==================================== ###
 
 def Parse_Expression(tokens: List[Token]) -> AST_Node:
-    return AST_Expression_Stub() # TODO: implement AST_Expression_Stub
+    return AST_Expression_Stub()
 
 def Parse_Statement(tokens:List[Token]) -> AST_Node:
 
@@ -96,17 +97,56 @@ def Parse_Statement(tokens:List[Token]) -> AST_Node:
     statement_node = None
 
     if tokens[0].get_type() == Token_Enum.Keywords.While:
-        statement_node = AST_Statement_While() #TODO: implement AST_Statement_While
+        statement_node = AST_Statement_While()
         tokens.pop(0)
-        if tokens[0].get_type() == Token_Enum.Closures.Paren_Open:
+        if tokens[0].get_type() != Token_Enum.Closures.Paren_Open:
             raise(Parser_Syntax_Error('Expected ( following loop definition'))
         closure_tokens = find_closure_tokens(tokens)
-        condition = Parse_Expression(closure_tokens)
+        condition = Parse_Expression(closure_tokens[1:-1])
+        if tokens[0].get_type() != Token_Enum.Closures.Curly_Open:
+            raise(Parser_Syntax_Error('Expected \{ following loop condition'))
+        block_tokens = find_closure_tokens(tokens)
+        block_list = Parse_Blocks(block_tokens[1:-1])
+
+        if tokens[0].get_type() != Token_Enum.Line_End.Line_End:
+            raise(Parser_Syntax_Error('Expected statement to end with ;, found {}'.format(tokens[0])))
+        else:
+            tokens.pop(0)
+
+        statement_node.affix_nodes(condition, block_list)
+    elif tokens[0].get_type() == Token_Enum.Keywords.If:
+        statement_node = AST_Statement_If()
+        tokens.pop(0)
+        if tokens[0].get_type() != Token_Enum.Closures.Paren_Open:
+            raise(Parser_Syntax_Error('Expected ( following if definition'))
+        closure_tokens = find_closure_tokens(tokens)
+        condition = Parse_Expression(closure_tokens[1:-1])
+        if tokens[0].get_type() != Token_Enum.Closures.Curly_Open:
+            raise(Parser_Syntax_Error('Expected \{ following if condition'))
+        block_tokens = find_closure_tokens(tokens)
+        block_list = Parse_Blocks(block_tokens[1:-1])
+
+        if tokens[0].get_type() == Token_Enum.Keywords.Else:
+            tokens.pop(0)
+
+            block_tokens = find_closure_tokens(tokens)
+            block_list_else = Parse_Blocks(block_tokens[1:-1])
+
+            statement_node.affix_nodes(condition, block_list, block_list_else)
+        else:
+            statement_node.affix_nodes(condition, block_list)
+
+        if tokens[0].get_type() != Token_Enum.Line_End.Line_End:
+            raise(Parser_Syntax_Error('Expected statement to end with ;, found {}'.format(tokens[0])))
+        else:
+            tokens.pop(0)
+
+
+    return statement_node
 
 
 
 def Parse_Blocks(tokens:List[Token]) -> AST_Node:
-    tokens = deepcopy(tokens)
     
     stack = []
     root = None # root node to be returned
