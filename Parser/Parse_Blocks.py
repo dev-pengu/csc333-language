@@ -35,7 +35,7 @@ def find_closure_tokens(tokens: List[Token]) -> List[Token]:
         
         if not closure_stack:
             break
-    if not closure_stack:
+    if closure_stack:
         raise Parser_Syntax_Error('Reached EOF before matching closure could be found')
     
     return closure_tokens
@@ -140,6 +140,8 @@ def Parse_Statement(tokens:List[Token]) -> AST_Node:
             raise(Parser_Syntax_Error('Expected statement to end with ;, found {}'.format(tokens[0])))
         else:
             tokens.pop(0)
+    else:
+        return Parse_Expression(tokens)
 
 
     return statement_node
@@ -161,6 +163,10 @@ def Parse_Blocks(tokens:List[Token]) -> AST_Node:
     
     last_block_list = None
     next_block_list = None
+
+    if len(stack) == 1:
+        return stack[0]
+
     while stack:
         next_statement_node = stack.pop()
         if next_block_list:
